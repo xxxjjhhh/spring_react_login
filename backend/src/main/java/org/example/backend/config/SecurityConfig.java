@@ -23,13 +23,16 @@ public class SecurityConfig {
 
     private final AuthenticationConfiguration authenticationConfiguration;
     private final AuthenticationSuccessHandler loginSuccessHandler;
+    private final AuthenticationSuccessHandler socialSuccessHandler;
 
     public SecurityConfig(
             AuthenticationConfiguration authenticationConfiguration,
-          @Qualifier("LoginSuccessHandler") AuthenticationSuccessHandler loginSuccessHandler
+            @Qualifier("LoginSuccessHandler") AuthenticationSuccessHandler loginSuccessHandler,
+            @Qualifier("SocialSuccessHandler") AuthenticationSuccessHandler socialSuccessHandler
     ) {
         this.authenticationConfiguration = authenticationConfiguration;
         this.loginSuccessHandler = loginSuccessHandler;
+        this.socialSuccessHandler = socialSuccessHandler;
     }
 
     // 커스텀 자체 로그인 필터를 위한 AuthenticationManager Bean 수동 등록
@@ -61,6 +64,11 @@ public class SecurityConfig {
         // 기본 Basic 인증 필터 disable
         http
                 .httpBasic(AbstractHttpConfigurer::disable);
+
+        // OAuth2 인증용
+        http
+                .oauth2Login(oauth2 -> oauth2
+                        .successHandler(socialSuccessHandler));
 
         // 인가
         http
