@@ -1,13 +1,16 @@
 package org.example.backend.domain.user.service;
 
+import org.example.backend.domain.jwt.service.JwtService;
 import org.example.backend.domain.user.dto.CustomOAuth2User;
 import org.example.backend.domain.user.dto.UserRequestDTO;
+import org.example.backend.domain.user.dto.UserResponseDTO;
 import org.example.backend.domain.user.entity.SocialProviderType;
 import org.example.backend.domain.user.entity.UserEntity;
 import org.example.backend.domain.user.entity.UserRoleType;
 import org.example.backend.domain.user.repository.UserRepository;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -31,10 +34,12 @@ public class UserService extends DefaultOAuth2UserService implements UserDetails
 
     private final PasswordEncoder passwordEncoder;
     private final UserRepository userRepository;
+    private final JwtService jwtService;
 
-    public UserService(PasswordEncoder passwordEncoder, UserRepository userRepository) {
+    public UserService(PasswordEncoder passwordEncoder, UserRepository userRepository, JwtService jwtService) {
         this.passwordEncoder = passwordEncoder;
         this.userRepository = userRepository;
+        this.jwtService = jwtService;
     }
 
     // 자체 로그인 회원 가입 (존재 여부)
@@ -101,6 +106,27 @@ public class UserService extends DefaultOAuth2UserService implements UserDetails
     }
 
     // 자체/소셜 로그인 회원 탈퇴
+    @Transactional
+    public void deleteUser(UserRequestDTO dto) throws AccessDeniedException {
+
+        // 본인 및 어드민만 삭제 가능 검증
+        SecurityContext context = SecurityContextHolder.getContext();
+        String sessionUsername = context.getAuthentication().getName();
+        String sessionRole = context.getAuthentication().getAuthorities().iterator().next().getAuthority();
+
+        boolean isOwner = sessionUsername.equals(dto.getUsername());
+        boolean isAdmin = sessionRole.equals("ROLE_"+UserRoleType.ADMIN.name());
+
+        if (!isOwner && !isAdmin) {
+            throw new AccessDeniedException("본인 혹은 관리자만 삭제할 수 있습니다.");
+        }
+
+        // 유저 제거
+        userRepository.deleteByUsername(dto.getUsername());
+
+        // Refresh 토큰 제거
+        jwtService.removeRefreshUser(dto.getUsername());
+    }
 
     // 소셜 로그인 (매 로그인시 : 신규 = 가입, 기존 = 업데이트)
     @Override
@@ -173,5 +199,14 @@ public class UserService extends DefaultOAuth2UserService implements UserDetails
     }
 
     // 자체/소셜 유저 정보 조회
+    @Transactional(readOnly = true)
+    public UserResponseDTO readUser() {
+        String username = SecurityContextHolder.getContext().getAuthentication().getName();
+
+        UserEntity entity = userRepository.findByUsernameAndIsLock(username, false)
+                .orElseThrow(() -> new UsernameNotFoundException("해당 유저를 찾을 수 없습니다: " + username));
+
+        return new UserResponseDTO(username, entity.getIsSocial(), entity.getNickname(), entity.getEmail());
+    }
 
 }
