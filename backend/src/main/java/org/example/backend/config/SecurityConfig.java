@@ -87,6 +87,8 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable);
 
         // CORS 설정
+        http
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()));
 
         // 기본 로그아웃 필터 + 커스텀 Refresh 토큰 삭제 핸들러 추가
         http
