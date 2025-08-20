@@ -36,9 +36,14 @@ function LoginPage() {
             localStorage.setItem("accessToken", data.accessToken);
             localStorage.setItem("refreshToken", data.refreshToken);
         } catch (err) {
-        setError("아이디 또는 비밀번호가 틀렸습니다.");
+            setError("아이디 또는 비밀번호가 틀렸습니다.");
         }
 
+    };
+
+    // 소셜 로그인 이벤트
+    const handleSocialLogin = (provider) => {
+        window.location.href = `${BACKEND_API_BASE_URL}/oauth2/authorization/${provider}`
     };
 
     // 페이지
@@ -69,6 +74,12 @@ function LoginPage() {
 
             <button type="submit">계속</button>
             </form>
+
+            <div>
+                <button onClick={() => handleSocialLogin("google")}>Google로 계속하기</button>
+                <button onClick={() => handleSocialLogin("naver")}>Naver로 계속하기</button>
+            </div>
+
         </div>
     );
 }
