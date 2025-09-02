@@ -93,6 +93,11 @@ public class JwtService {
             throw new RuntimeException("유효하지 않은 refreshToken입니다.");
         }
 
+        // RefreshEntity 존재 확인 (화이트리스트)
+        if (!existsRefresh(refreshToken)) {
+            throw new RuntimeException("유효하지 않은 refreshToken입니다.");
+        }
+
         // 정보 추출
         String username = JWTUtil.getUsername(refreshToken);
         String role = JWTUtil.getRole(refreshToken);
